@@ -1,8 +1,10 @@
+from robotlab.math_utils import Vector, Matrix, clip
+from robotlab.dev_utils import SlideMixIn
+from robotlab.dev_utils import RunzeCommand, RunzeMixIn
 import logging
-import serial
 import time
 
-from robotlab.dev_utils import RunzeCommand, RunzeMixIn
+logging.basicConfig(level=logging.DEBUG)
 
 
 class Device(object):
@@ -11,16 +13,47 @@ class Device(object):
         self.name = name
 
 
-class Slide(Device):
+class Slide(Device, SlideMixIn):
     def __init__(self):
         super(Slide, self).__init__("slide")
-        # self.__curr_point =
+        self._curr_point = Vector(0, 0)
+        self._boundary = Vector(300, 200)
+        self.speed = 30   # mm per s
 
-    def move_to_point(self, x, y):
-        pass
+    def __del__(self):
+        self.reset()
 
-    def move(self, dx, dy):
-        pass
+    def move_to_point(self, p):
+        v = self._clip(p - self._curr_point)
+        t = v.length / self.speed
+        self._move(v, t)
+        self._curr_point += v
+
+    def move(self, v):
+        v = self._clip(v)
+        self._move(v, v.length / self.speed)
+        self._curr_point += v
+
+    def reset(self):
+        self._up()
+        self.move_to_point(Vector(0, 0))
+
+    def up(self):
+        self._up()
+
+    def down(self):
+        self._down()
+
+    def _clip(self, v):
+        p = self._curr_point
+        b = self._boundary
+        k1 = 1 if v[0] == 0 else clip(v[0], -p[0], b[0]-p[0]) / v[0]
+        k2 = 1 if v[1] == 0 else clip(v[1], -p[1], b[1]-p[1]) / v[1]
+        k = min(k1, k2)
+        ret = k * v
+        if 0 <= k < 1:
+            logging.warning("Move vector was cliped. Clip reslut is %s" % ret)
+        return ret
 
 
 class Pump(Device, RunzeMixIn):
@@ -43,16 +76,20 @@ class Pump(Device, RunzeMixIn):
         self.__position = value / self.__step_per_volum
 
     def reset(self):
+        self.set_speed(200)
         self._send(RunzeCommand.reset)
         self.__update_position()
 
     @property
-    def set_speed(self):
+    def speed(self):
         return self.__speed
 
     def set_speed(self, value):
+        if value < 0 or value > 200:
+            logging.warning("speed can out of 0 and 200.")
+            return
         self._send(RunzeCommand.set_speed, value)
-        self.__speed = self._send(RunzeCommand.get_maxspeed)[1]
+        self.__speed = self._send(RunzeCommand.get_maxspeed)
 
     @property
     def position(self):

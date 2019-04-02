@@ -1,5 +1,4 @@
 import logging
-import functools
 import serial
 from enum import Enum, unique
 from traceback import extract_stack
@@ -23,7 +22,7 @@ class RunzeCommand(Enum):
 
 
 @unique
-class RunzeStatus(Enum):
+class Status(Enum):
     normal = 0x00
     frame_error = 0x01
     param_error = 0x02
@@ -56,11 +55,11 @@ def unpack(data):
     data = bytearray(data)
     try:
         assert verify(data)
-    except:
+    except Exception:
         logging.error("Verify failed. Bytes: %s" % data)
         raise type('VerifyError', (Exception,), dict())
 
-    return RunzeStatus(int(data[2])), int.from_bytes(data[3:5], "little")
+    return Status(int(data[2])), int.from_bytes(data[3:5], "little")
 
 
 def verify(data):
@@ -80,25 +79,25 @@ class RunzeMixIn(object):
         super(RunzeMixIn, self).__init__()
         self.name = name
         self.address = address
-        self.timeout = 0.1
+        self.timeout = 0.2
         self.port = serial.Serial(port=port, timeout=self.timeout)
         if port is None:
             logging.error("Serial port open failed.")
 
     def __send(self, cmd, param=0):
         status, value = None, 0
-        self.port.flush()
         self.port.write(pack(self.address, cmd, param))
         data = self.port.read(16)
         data = data[:8] if len(data) == 8 else data[8:]
         try:
             status, value = unpack(data)
-        except:
-            status, value = RunzeStatus.do_nothing, 0
+        except Exception:
+            status, value = Status.do_nothing, 0
 
         return status, value
 
     def _send(self, cmd, param=0):
+        param = int(param)
         if not extract_stack()[-2][2] == "_send":
             logging.debug("Send: %s param: %d." % (cmd.name, param))
         # check is the device normal.
@@ -106,25 +105,25 @@ class RunzeMixIn(object):
         s1 = self.__send(RunzeCommand.polling)[0]
         if self.name == "pump":
             s2 = self.__send(RunzeCommand.pump_valve_polling)[0]
-            if s1 != RunzeStatus.normal:
+            if s1 != Status.normal:
                 status = s1
-            elif s2 != RunzeStatus.normal:
+            elif s2 != Status.normal:
                 status = s2
             else:
-                status = RunzeStatus.normal
+                status = Status.normal
         else:
             status = s1
 
-        if status == RunzeStatus.normal:
+        if status == Status.normal:
             status, value = self.__send(cmd, param)
             # get true value
-            if status == RunzeStatus.need_polling:
+            if status == Status.need_polling:
                 if cmd == RunzeCommand.switch and self.name == "pump":
                     status, value = self.__send(
                         RunzeCommand.pump_valve_polling)
                 else:
                     status, value = self.__send(RunzeCommand.polling)
-        elif status == RunzeStatus.busy:
+        elif status == Status.busy:
             return self._send(cmd, param)
         else:
             logging.error("Error: %s" % status.name)
@@ -134,6 +133,6 @@ class RunzeMixIn(object):
     def isLinked(self):
         try:
             self._send(RunzeCommand.polling)
-        except:
+        except Exception:
             return False
         return True
