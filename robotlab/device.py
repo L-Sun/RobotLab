@@ -4,13 +4,12 @@ from robotlab.dev_utils import RunzeCommand, RunzeMixIn
 import logging
 import time
 
-logging.basicConfig(level=logging.DEBUG)
-
 
 class Device(object):
     def __init__(self, name, **kw):
         super(Device, self).__init__(name=name, **kw)
         self.name = name
+        self.logger = logging.getLogger("main.device")
 
 
 class Slide(Device, SlideMixIn):
@@ -86,7 +85,7 @@ class Pump(Device, RunzeMixIn):
 
     def set_speed(self, value):
         if value < 0 or value > 200:
-            logging.warning("speed can out of 0 and 200.")
+            self.logger.warning("speed can out of 0 and 200.")
             return
         self._send(RunzeCommand.set_speed, value)
         self.__speed = self._send(RunzeCommand.get_maxspeed)
@@ -103,7 +102,7 @@ class Pump(Device, RunzeMixIn):
         if volumn == 0:
             return
         if self.__position + volumn > self.__boundary:
-            logging.warning("volumn of pulling is out of boundary.")
+            self.logger.warning("volumn of pulling is out of boundary.")
 
         self._send(RunzeCommand.pull, volumn * self.__step_per_volum)
         self.__update_position()
@@ -112,7 +111,7 @@ class Pump(Device, RunzeMixIn):
         if volumn == 0:
             return
         if self.__position - volumn < 0:
-            logging.warning("volumn of pushing is out of boundary.")
+            self.logger.warning("volumn of pushing is out of boundary.")
 
         self._send(RunzeCommand.push, volumn * self.__step_per_volum)
         self.__update_position()
@@ -135,7 +134,7 @@ class Valve(Device, RunzeMixIn):
         if aisle == self.__aisle:
             return
         if not (0 < aisle <= self.__boundary):
-            logging.error("aisle out of boundary")
+            self.logger.error("aisle out of boundary")
             return
 
         self._send(RunzeCommand.switch, aisle)

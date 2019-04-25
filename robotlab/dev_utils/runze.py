@@ -2,7 +2,8 @@ import logging
 import serial
 from enum import Enum, unique
 from traceback import extract_stack
-logging.basicConfig(level=logging.DEBUG)
+
+runze_logger = logging.getLogger("main.device.runze")
 
 
 @unique
@@ -56,7 +57,7 @@ def unpack(data):
     try:
         assert verify(data)
     except Exception:
-        logging.error("Verify failed. Bytes: %s" % data)
+        runze_logger.error("Verify failed. Bytes: %s" % data)
         raise type('VerifyError', (Exception,), dict())
 
     return Status(int(data[2])), int.from_bytes(data[3:5], "little")
@@ -64,11 +65,11 @@ def unpack(data):
 
 def verify(data):
     if len(data) != 8:
-        logging.error("Data is not 8 bytes.")
+        runze_logger.error("Data is not 8 bytes.")
         return False
 
     if sum(data[:-2]) != int.from_bytes(data[-2:], "little"):
-        logging.error("Sclearum verify failed.")
+        runze_logger.error("Sclearum verify failed.")
         return False
 
     return True
@@ -82,7 +83,7 @@ class RunzeMixIn(object):
         self.timeout = 0.2
         self.port = serial.Serial(port=port, timeout=self.timeout)
         if port is None:
-            logging.error("Serial port open failed.")
+            runze_logger.error("Serial port open failed.")
 
     def __send(self, cmd, param=0):
         status, value = None, 0
@@ -99,7 +100,7 @@ class RunzeMixIn(object):
     def _send(self, cmd, param=0):
         param = int(param)
         if not extract_stack()[-2][2] == "_send":
-            logging.debug("Send: %s param: %d." % (cmd.name, param))
+            runze_logger.debug("Send: %s param: %d." % (cmd.name, param))
         # check is the device normal.
         status, value = None, 0
         s1 = self.__send(RunzeCommand.polling)[0]
@@ -124,9 +125,15 @@ class RunzeMixIn(object):
                 else:
                     status, value = self.__send(RunzeCommand.polling)
         elif status == Status.busy:
+            while status == Status.busy:
+                if cmd == RunzeCommand.switch and self.name == "pump":
+                    status, value = self.__send(
+                        RunzeCommand.pump_valve_polling)
+                else:
+                    status, value = self.__send(RunzeCommand.polling)
             return self._send(cmd, param)
         else:
-            logging.error("Error: %s" % status.name)
+            runze_logger.error("Error: %s" % status.name)
 
         return value
 
