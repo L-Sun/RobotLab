@@ -39,3 +39,13 @@ def clip(v, a, b):
         return a
     if v >= b:
         return b
+
+
+def Lattice(m, n, dx, dy, serpentine=False):
+    reverse = False
+    for i in range(m):
+        range_args = (n-1, -1, -1) if reverse else (0, n)
+        for j in range(*range_args):
+            yield Vector(dx*j, dy*i)
+        reverse = not reverse if serpentine else False
+    return "Lattice over"

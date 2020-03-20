@@ -22,6 +22,10 @@ class Slide(Device, SlideMixIn):
     def __del__(self):
         self.reset()
 
+    @property
+    def curr_point(self):
+        return self._curr_point.copy()
+
     def move_to_point(self, p):
         v = self._clip(p - self._curr_point)
         t = v.length / self.speed

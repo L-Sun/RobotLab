@@ -16,7 +16,7 @@ class SlideMixIn(object):
     def _move(self, v, t):
         if int(v.length) == 0:
             return
-        x, y = v.astype(int) * 100  # mm to um
+        x, y = (v * 100).astype(int)  # mm to um
         t = int(t * 1000)  # s to ms
         ebb_motion.doABMove(self.port, -x, y, t)
 

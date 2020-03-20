@@ -1,5 +1,7 @@
 from robotlab.robotlab import Sampler
-from robotlab.math_utils import Vector
+from robotlab.math_utils import Vector, Lattice
+
+
 import time
 import json
 import logging
@@ -53,12 +55,12 @@ def elution(elute_port, sample_port, H1, H2, elute_speed, elute_volum=5):
 
     # 清空管道
     s.open_port(Port.waste)
-    s.pump.reset()
+    s._pump.reset()
 
     # stuff()
 
-    # 洗淋公用管线
-    s.wash(Port.water, [Port.waste], volum=20)
+    s.elute(Port.water, [Port.waste], volum=20,
+            speed=80, air_volum=5, air_port=Port.air)
     time.sleep(5)
 
     s.slide.move_to_point(Vector(50, 80))
@@ -95,5 +97,4 @@ def elution(elute_port, sample_port, H1, H2, elute_speed, elute_volum=5):
 
 
 if __name__ == "__main__":
-    elution_logger.info("123")
-#     elution("v2-3", Port.sample, Port.hcl_6, Port.hcl_0_1, 12, 5)
+    elution(Port.waste, Port.sample, Port.hcl_0_1, Port.hcl_6, 5)

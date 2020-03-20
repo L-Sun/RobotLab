@@ -1,6 +1,8 @@
 from robotlab.device import Pump, Valve, Slide
 from robotlab.math_utils import Vector
+
 import time
+import functools
 
 
 class Robot(object):
@@ -25,31 +27,14 @@ class Sampler(Robot):
             self.v2: 2
         }
 
-    def wash(self,  water_port, target_ports, volum):
-        """ Wash a port
-
-        Parameter:
-            target_ports: target ports
-            water: water port
-            volum: volum of washing for every port
-        """
-        for p in target_ports:
-            if p == water_port:
-                continue
-            self.open_port(water_port)
-            curr_speed = self.pump.speed
-            self.pump.set_speed(50)
-            self.pump.pull(volum)
-            self.open_port(p)
-            self.pump.push(volum)
-            self.pump.set_speed(curr_speed)
+        self.isLocked = False
 
     def elute(self, elute_port, target_ports, volum, speed, **kw):
         for p in target_ports:
             self.open_port(elute_port)
             self.pump.set_speed(100)
             self.pump.pull(volum)
-            time.sleep(0.5)
+            time.sleep(1)
             # pump pull air
             if "air_port" in kw and "air_volum" in kw:
                 self.open_port(kw["air_port"])
