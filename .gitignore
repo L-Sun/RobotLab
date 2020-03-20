@@ -13,4 +13,5 @@ build
 robotlab/__pycache__
 
 # vscode
-.vscode/sftp.json
+.vscode
+logs
